@@ -4,6 +4,7 @@ const sgMail = require("@sendgrid/mail");
 const { Transform } = require("json2csv");
 const { pipeline } = require("stream");
 const uniqid = require("uniqid");
+const {createReadStream} = require("fs-extra")
 const { join } = require("path");
 const { getattendees, writeattendees } = require("../../lib/fsUtilities");
 const attendencesPath = join(__dirname, "attandees.json");
@@ -46,14 +47,14 @@ attendeesRoute.post("/sendEmail", async (req, res, next) => {
     next(err);
   }
 });
-attendeesRoute.post("/export/csv", (req, res, next) => {
+attendeesRoute.get("/export/csv", (req, res, next) => {
   try {
     const jsonReadableStream = createReadStream(attendencesPath);
-    const json2csv = new Transform({
-      fields: ["ID", "FirstName", "SecondName", "Email", "ArrivalDay"],
+    const transformJsonIntoCSV = new Transform({
+      fields: ["ID", "First Name", "SecondName", "Email", "ArrivalDay"],
     });
-    res.setHeader("Content-Disposition", "attachment; filename=export.csv");
-    pipeline(jsonReadableStream, json2csv, res, (err) => {
+    res.setHeader("Content-Disposition", "attachment; filename=export.csv")
+    pipeline(jsonReadableStream, transformJsonIntoCSV, res, err => {
       if (err) {
           console.log(err)
           next(err)
