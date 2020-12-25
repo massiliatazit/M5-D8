@@ -4,9 +4,13 @@ const sgMail = require("@sendgrid/mail");
 const { Transform } = require("json2csv");
 const { pipeline } = require("stream");
 const uniqid = require("uniqid");
-const {createReadStream} = require("fs-extra")
+const {createReadStream,createWriteStream} = require("fs-extra")
 const { join } = require("path");
 const { getattendees, writeattendees } = require("../../lib/fsUtilities");
+
+
+var PDFDocument = require('pdfkit');
+
 const attendencesPath = join(__dirname, "attandees.json");
 
 attendeesRoute.get("/", async (req, res, next) => {
@@ -51,7 +55,7 @@ attendeesRoute.get("/export/csv", (req, res, next) => {
   try {
     const jsonReadableStream = createReadStream(attendencesPath);
     const transformJsonIntoCSV = new Transform({
-      fields: ["ID", "First Name", "SecondName", "Email", "ArrivalDay"],
+      fields: ["ID", "FirstName", "SecondName", "Email", "ArrivalDay"],
     });
     res.setHeader("Content-Disposition", "attachment; filename=export.csv")
     pipeline(jsonReadableStream, transformJsonIntoCSV, res, err => {
@@ -67,4 +71,23 @@ attendeesRoute.get("/export/csv", (req, res, next) => {
     next(err);
   }
 });
+attendeesRoute.get("/pdf",async(req,res,next)=>{
+  try{
+   
+    const docpdf = new PDFDocument()
+    docpdf.pipe(createWriteStream(join(__dirname,"../../pdfs/attend.pdf")))
+    const attendencesdata = await getattendees(attendencesPath)
+    let content =attendencesdata.map((attendence)=>`${attendence.FirstName},${attendence.SecondName},${attendence.ID},${attendence.ArrivalDay}`)
+    docpdf.font("Helvetica").fontSize(20).text(content,100,120)
+    res.setHeader("Content-Disposition", "attachment; filename=attendeesresult.pdf")
+    docpdf.pipe(res)
+    docpdf.end()
+
+  }catch(err){
+    console.log(err)
+    next(err)
+  }
+
+
+})
 module.exports = attendeesRoute;
